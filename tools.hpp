@@ -6,6 +6,7 @@ using namespace std;
 //
 #include "IO.hpp"
 #include "macro.hpp"
+#include "debug.hpp"
 /*
 #ifdef LOCAL
 #define dbg(x) cerr << #x << ": " << (x) << '\n'
