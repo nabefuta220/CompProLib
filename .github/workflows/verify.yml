@@ -31,11 +31,11 @@ jobs:
           profile: minimal
 
       # required only if you set `languages.rust.list_dependencies_backend.kind` to `"cargo-udeps"`
-      - name: Install cargo-udeps for Rust
-        uses: actions-rs/install@v0.1
-        with:
-          crate: cargo-udeps
-          use-tool-cache: true
+      #- name: Install cargo-udeps for Rust
+      #  uses: actions-rs/install@v0.1
+      #  with:
+      #    crate: cargo-udeps
+      #    use-tool-cache: true
 
       - name: Run tests
         env:
