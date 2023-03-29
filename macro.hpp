@@ -24,4 +24,21 @@ using VV  = vector<V>;
 using P   = pair<long long, long long>;
 using VP  = vector<P>;
 using Vb  = vector<bool>;
+
+// decler and input
+#define ini(...)     \
+	int __VA_ARGS__; \
+	input(__VA_ARGS__);
+#define inl(...)           \
+	long long __VA_ARGS__; \
+	input(__VA_ARGS__);
+#define ind(...)        \
+	double __VA_ARGS__; \
+	input(__VA_ARGS__);
+#define ins(...)        \
+	string __VA_ARGS__; \
+	input(__VA_ARGS__);
+#define inv2(s, t) rep(i, (s).size()) input(s[i], t[i]);
+#define inv3(s, t, u) rep(i, (s).size()) input(s[i], t[i], u[i]);
+#define inv4(s, t, u, v) rep(i, (s).size()) input(s[i], t[i], u[i], v[i]);
 #endif  //__MACRO_HPP__
