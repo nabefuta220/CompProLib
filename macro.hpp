@@ -1,5 +1,4 @@
 #ifndef __MACRO_HPP__
-
 #define __MACRO_HPP__
 #include "tools.hpp"
 using ll = long long;
