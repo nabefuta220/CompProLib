@@ -1,0 +1,19 @@
+#ifndef __TOOLS_HPP__
+#include <bits/stdc++.h>
+using namespace std;
+#define __TOOLS_HPP__
+
+#include "IO.hpp"
+#include "macro.hpp"
+
+#ifdef LOCAL
+#define dbg(x) cerr << #x << ": " << (x) << '\n'
+#define say(x) cerr << (x) << '\n'
+#else
+#define dbg(x)
+#define say(x)
+#endif
+string solve(bool a) { return ((a) ? "Yes" : "No"); }
+
+
+#endif  // __TOOLS_HPP__
