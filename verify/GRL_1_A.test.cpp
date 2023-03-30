@@ -8,27 +8,34 @@ bool operator<(const edge<T>& lhs, const edge<T>& rhs) {
 	return lhs.cost < rhs.cost;
 }
 template <typename T>
+bool operator>(const edge<T>& lhs, const edge<T>& rhs) {
+	return lhs.cost > rhs.cost;
+}
+template <typename T>
 Edges<T> dijkstra(int start, WeightedGraph<T>& g) {
 	T unreached = safe_max<T>();
 	vector<edge<T>> dist(g.size(), edge<T>(-1, -1, unreached));
 	rep(i, g.size()) dist[i].to = i;
 	dist[start].cost          = 0;
-	for (auto& itr : dist) trace(itr.src, itr.to, itr.cost);
-	priority_queue<edge<T>, vector<edge<T>>, less<edge<T>>> q;
+	//for (auto& itr : dist) trace(itr.src, itr.to, itr.cost);
+	priority_queue<edge<T>, vector<edge<T>>, greater<edge<T>>> q;
 	
 	q.push(dist[start]);
 	edge<T> at = q.top();
-	trace(at.src, at.to, at.cost);
+	//trace(at.src, at.to, at.cost);
 	while (!q.empty()) {
 		at = q.top();
-		trace(at.src, at.to, at.cost);
+		
 		q.pop();
 		
-		if (dist[at.to].cost != at.cost) continue;
+		if (dist[at.to].cost != at.cost | dist[at.to].src != at.src) continue;
+		trace("que",at.src, at.to, at.cost);
 		for (auto& itr : g[at.to]) {
 			if(chmin(dist[itr.to].cost,dist[at.to].cost + itr.cost)){
 				dist[itr.to].src = at.to;
 				q.push(dist[itr.to]);
+				trace("add", dist[itr.to].src, dist[itr.to].to,
+				      dist[itr.to].cost);
 			}
 		}
 	}
