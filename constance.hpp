@@ -3,7 +3,7 @@
 #include "tools.hpp"
 template <typename T>
 static constexpr T safe_max() noexcept {
-	return numeric_limits<T>::max() / 2.0 - 1.0;
+	return numeric_limits<T>::max() / (T)2 - (T)1;
 };
 
 constexpr long long INFLL = safe_max<long long>();

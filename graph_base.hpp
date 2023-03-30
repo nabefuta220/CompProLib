@@ -35,7 +35,7 @@ vector<vector<T>> input_adjmtrgraph(int v, int e, T undef_value,
                                     bool weighted = true, bool directed = true,
                                     bool indexed_1 = true) {
 	vector<vector<T>> d(v, vector<T>(v, undef_value));
-	for (int i = 0; i < v; ++i) {
+	for (int i = 0; i < e; ++i) {
 		int s, t;
 		T c;
 		cin >> s >> t;
