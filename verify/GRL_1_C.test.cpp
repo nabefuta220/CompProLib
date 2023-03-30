@@ -3,15 +3,7 @@
 
 #include "graph_base.hpp"
 #include "tools.hpp"
-template <typename T>
-vector<vector<T>> warshall_floyd(vector<vector<T>>& g) {
-	size_t size = g.size();
-	T unreached = safe_max<T>();
-	rep(u, size) rep(s, size) rep(t, size)
-	    g[s][u] != unreached&& g[u][t] !=
-	        unreached&& chmin(g[s][t], g[s][u] + g[u][t]);
-	return g;
-}
+#include "warshall_floyd.hpp"
 int main() {
 	ini(v, e);
 	vector<vector<ll>> g = input_adjmtrgraph(v, e, INFLL, true, true, false);
