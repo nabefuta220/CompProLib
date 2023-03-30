@@ -11,6 +11,15 @@ struct edge {
 	// 重み付き辺の追加
 	edge(int _src, int _to, T _cost) : src(_src), to(_to), cost(_cost) {}
 };
+//edgeに関する演算子
+template <typename T>
+bool operator<(const edge<T>& lhs, const edge<T>& rhs) {
+	return lhs.cost < rhs.cost;
+}
+template <typename T>
+bool operator>(const edge<T>& lhs, const edge<T>& rhs) {
+	return lhs.cost > rhs.cost;
+}
 // 辺の集合
 template <typename T>
 using Edges = vector<edge<T>>;
@@ -58,7 +67,7 @@ UnweightedGraph input_unwightgraph(int v, int e = -1, bool directed = true,
 
 // 重みありグラフの入力
 template <typename T>
-WeightedGraph<T> input_wightgraph(int v, int e = -1, bool directed = true,
+WeightedGraph<T> input_weightgraph(int v, int e = -1, bool directed = true,
                                   bool indexed_1 = true) {
 	WeightedGraph<T> g(v);
 	if (e == -1) e = v - 1;
