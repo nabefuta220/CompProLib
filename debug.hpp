@@ -16,7 +16,7 @@ struct is_specialize<
 template <typename U>
 struct is_specialize<U, enable_if_t<is_integral<U>::value, void>> : true_type {
 };
-#ifdef __LOCAL__
+#ifdef LOCAL
 
 void dump(const char& t) { cerr << t; }
 
@@ -33,14 +33,14 @@ void dump(const U& t) {
 template <typename T>
 void dump(const T& t, enable_if_t<is_integral<T>::value>* = nullptr) {
 	string res;
-	if (t == Nyaan::inf) res = "inf";
+	if (t == INF) res = "inf";
 	if constexpr (is_signed<T>::value) {
-		if (t == -Nyaan::inf) res = "-inf";
+		if (t == -INF) res = "-inf";
 	}
 	if constexpr (sizeof(T) == 8) {
-		if (t == Nyaan::infLL) res = "inf";
+		if (t == INFLL) res = "inf";
 		if constexpr (is_signed<T>::value) {
-			if (t == -Nyaan::infLL) res = "-inf";
+			if (t == INFLL) res = "-inf";
 		}
 	}
 	if (res.empty()) res = to_string(t);
