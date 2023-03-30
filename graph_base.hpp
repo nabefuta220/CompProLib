@@ -58,7 +58,7 @@ UnweightedGraph input_unwightgraph(int v, int e = -1, bool directed = true,
 
 // 重みありグラフの入力
 template <typename T>
-WeightedGraph<T> input_wightgraph(int v, int e = -1, bool directed = true,
+WeightedGraph<T> input_weightgraph(int v, int e = -1, bool directed = true,
                                   bool indexed_1 = true) {
 	WeightedGraph<T> g(v);
 	if (e == -1) e = v - 1;
