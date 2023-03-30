@@ -43,7 +43,7 @@ template <typename T, class... U, char seperate = ' '>
 void output(const T& t, const U&... u) {
 	cout << t;
 	if (sizeof...(u)) cout << seperate;
-	out(u...);
+	output(u...);
 }
 
 // setup

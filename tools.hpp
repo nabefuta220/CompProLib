@@ -5,8 +5,10 @@ using namespace std;
 
 //
 #include "IO.hpp"
-#include "macro.hpp"
+#include "constance.hpp"
 #include "debug.hpp"
+#include "macro.hpp"
+#include "transient.hpp"
 /*
 #ifdef LOCAL
 #define dbg(x) cerr << #x << ": " << (x) << '\n'
