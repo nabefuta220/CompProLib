@@ -6,7 +6,10 @@
 template <typename T>
 vector<vector<T>> warshall_floyd(vector<vector<T>>& g) {
 	size_t size = g.size();
-	rep(s, size) rep(t, size) rep(u, size) chmin(g[s][t], g[s][u] + g[u][t]);
+	T unreached = safe_max<T>();
+	rep(u, size) rep(s, size) rep(t, size)
+	    g[s][u] != unreached&& g[u][t] !=
+	        unreached&& chmin(g[s][t], g[s][u] + g[u][t]);
 	return g;
 }
 int main() {
