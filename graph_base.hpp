@@ -1,27 +1,26 @@
 #ifndef __GRAPH_BASE_HPP__
 #define __GRAPH_BASE_HPP__
 #include "tools.hpp"
-//辺の情報
+// 辺の情報
 template <typename T>
 struct edge {
 	int src, to;
 	T cost;
-	//重みなし辺の追加
+	// 重みなし辺の追加
 	edge(int _to, T _cost) : src(-1), to(_to), cost(_cost) {}
-	//重み付き辺の追加
+	// 重み付き辺の追加
 	edge(int _src, int _to, T _cost) : src(_src), to(_to), cost(_cost) {}
-
 };
-//辺の集合
+// 辺の集合
 template <typename T>
 using Edges = vector<edge<T>>;
 
 // 重み付きグラフ
 template <typename T>
-using WeightedGraph   = vector<Edges<T>>;
-//重みなしグラフ
+using WeightedGraph = vector<Edges<T>>;
+// 重みなしグラフ
 using UnweightedGraph = vector<vector<int>>;
-//隣接行列
+// 隣接行列
 template <typename T>
 vector<vector<T>> input_adjmtrgraph(int v, int e, T undef_value,
                                     bool weighted = true, bool directed = true,
@@ -44,7 +43,7 @@ vector<vector<T>> input_adjmtrgraph(int v, int e, T undef_value,
 
 // 重みなしグラフの入力
 UnweightedGraph input_unwightgraph(int v, int e = -1, bool directed = true,
-                      bool indexed_1 = true) {
+                                   bool indexed_1 = true) {
 	UnweightedGraph g(v);
 	if (e == -1) e = v - 1;
 	for (int i = 0; i < e; ++i) {
@@ -57,10 +56,10 @@ UnweightedGraph input_unwightgraph(int v, int e = -1, bool directed = true,
 	return g;
 }
 
-//重みありグラフの入力
+// 重みありグラフの入力
 template <typename T>
 WeightedGraph<T> input_wightgraph(int v, int e = -1, bool directed = true,
-                        bool indexed_1 = true) {
+                                  bool indexed_1 = true) {
 	WeightedGraph<T> g(v);
 	if (e == -1) e = v - 1;
 	for (int i = 0; i < e; ++i) {
@@ -92,4 +91,4 @@ Edges<T> input_edgegraph(int e, int weighted = true, bool indexed_1 = true) {
 	}
 	return es;
 }
-#endif //__GRAPH_BASE_HPP__
+#endif  //__GRAPH_BASE_HPP__

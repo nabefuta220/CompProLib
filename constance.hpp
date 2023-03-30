@@ -8,6 +8,6 @@ static constexpr T safe_max() noexcept {
 
 constexpr long long INFLL = safe_max<long long>();
 constexpr int INF         = safe_max<int>();
-const double PI       = acos(-1);
+const double PI           = acos(-1);
 
 #endif  // __CONSTANCE_HPP__

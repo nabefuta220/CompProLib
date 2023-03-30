@@ -1,6 +1,7 @@
 #define PROBLEM \
 	"https://onlinejudge.u-aizu.ac.jp/courses/library/5/GRL/1/GRL_1_B"
 
+#include "bellman-ford.hpp"
 #include "graph_base.hpp"
 #include "tools.hpp"
 
@@ -9,18 +10,7 @@ int main() {
 	Edges<int> path = input_edgegraph<int>(e, true, false);
 
 	// bellman ford
-	vector<int> dist(v, INF);
-	dist[r] = 0;
-	rep(_, v) for (auto p : path) {
-		if (dist[p.src] == INF) continue;
-		chmin(dist[p.to], dist[p.src] + p.cost);
-	}
-
-	// cout << dist << endl;
-	for (auto p : path) {
-		if (dist[p.src] == INF) continue;
-		if (dist[p.to] > dist[p.src] + p.cost) dist[p.to] = -INF;
-	}
+	vector<int> dist = bellman_ford<>(r, path, v);
 	// end of bellman ford
 	int detected = false;
 	for (auto d : dist) detected |= (d == -INF);
