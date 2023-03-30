@@ -12,16 +12,27 @@
 template <typename T>
 vector<T> bellman_ford(int start, Edges<T>& path, int vertex) {
 	T unreached = safe_max<T>();
-	vector<int> dist(vertex, unreached);
+	vector<T> dist(vertex, unreached);
 	dist[start] = 0;
-	rep(_, vertex) for (auto p : path) {
-		if (dist[p.src] == unreached) continue;
-		chmin(dist[p.to], dist[p.src] + p.cost);
-	}
 
-	for (auto p : path) {
-		if (dist[p.src] == unreached) continue;
-		if (dist[p.to] > dist[p.src] + p.cost) dist[p.to] = -unreached;
+	char updated = false;
+	rep(_, vertex) {
+		updated = false;
+		for (auto p : path) {
+			if (dist[p.src] == unreached) continue;
+			updated |= chmin(dist[p.to], dist[p.src] + p.cost);
+		}
+		if (!updated) return dist;
+	}
+	for (; updated; updated = false) {
+		updated = false;
+		for (auto p : path) {
+			if (dist[p.src] == unreached) continue;
+			if (dist[p.src] == -unreached)
+				dist[p.to] = -unreached, updated = true;
+			if (dist[p.to] > dist[p.src] + p.cost)
+				dist[p.to] = -unreached, updated = true;
+		}
 	}
 	return dist;
 }
