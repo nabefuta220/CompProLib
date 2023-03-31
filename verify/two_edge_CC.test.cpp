@@ -2,32 +2,48 @@
 
 #include "graph_base.hpp"
 #include "lowlink.hpp"
-void dfs(int at, int last, Vi &group, lowlink &lowlinker, int &counter) {
-	if (last != -1 && lowlinker.label[last] >= lowlinker.id[at]) {
-		group[at] = group[last];
-	} else {
-		group[at] = counter++;
+
+struct two_edge_connected_compoment {
+	const UnweightedGraph &g;
+	lowlink linker;
+	size_t vertex;
+	Vi group_id;
+	UnweightedGraph tree;
+	VVi groups;
+	int counter;
+	two_edge_connected_compoment(const UnweightedGraph &_g)
+	    : g(_g),
+	      linker(g),
+	      vertex(_g.size()),
+	      group_id(vertex, -1),
+	      counter(0) {
+		rep(i, g.size()) if (group_id[i] == -1)
+		    two_edge_connected_compoment::dfs(i, -1);
+
+		groups.resize(counter);
+		tree.resize(counter);
+		for (auto &itr : linker.bridge)
+			tree[group_id[itr.first]].push_back(group_id[itr.second]);
+
+		rep(i, vertex) groups[group_id[i]].push_back(i);
 	}
-	for (auto &itr : lowlinker.g[at]) {
-		if (group[itr] == -1) {
-			dfs(itr, at, group, lowlinker, counter);
-		}
+	void dfs(int at, int last) {
+		if (last != -1 && linker.label[last] >= linker.id[at])
+			group_id[at] = group_id[last];
+		else
+			group_id[at] = counter++;
+
+		for (auto &itr : linker.g[at])
+			if (group_id[itr] == -1) two_edge_connected_compoment::dfs(itr, at);
 	}
-}
+};
 int main() {
 	ini(n, m);
 	UnweightedGraph g = input_unwightgraph(n, m, false, false);
-	lowlink linker(g);
+	two_edge_connected_compoment comper(g);
 
-	Vi group(n, -1);
-	int counter = 0;
-	rep(i, n) {
-		if (group[i] == -1) {
-			dfs(i, -1, group, linker, counter);
-		}
-	}
-	VVi ans(counter);
-	rep(i, n) { ans[group[i]].push_back(i); }
+	VVi ans = comper.groups;
+
 	output(ans.size());
 	for (auto &itr : ans) {
 		output(itr.size(), itr);
