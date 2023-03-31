@@ -14,7 +14,7 @@ struct lowlink {
 	lowlink(const UnweightedGraph &_g)
 	    : g(_g), vertex(g.size()), label(vertex, -1), id(vertex, -1) {
 		for (int i = 0, count = 0; i < vertex; i++)
-			if (label[i] == -1) count = dfs(i, -1, count);
+			if (label[i] == -1) count = lowlink::dfs(i, -1, count);
 	}
 
 	int dfs(int at, int last, int count) {
