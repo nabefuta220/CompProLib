@@ -65,7 +65,7 @@ if __name__ == "__main__":
     parser.add_argument('source', help='Source File')
     parser.add_argument('-c', '--console',
                         action='store_true', help='Print to Console')
-    parser.add_argument('--lib', help='Path to Atcoder Library')
+    parser.add_argument('--lib', help='Path to This library Path')
     opts = parser.parse_args()
 
     if opts.lib:
