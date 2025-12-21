@@ -7,14 +7,22 @@ from os import getenv, environ
 from pathlib import Path
 from dataclasses import dataclass, field
 
+RawFileName = str
+RawFileNames = list[RawFileName]
+SourceLine = str
+SourceLines = list[SourceLine]
+DefinedParam = str
+
+
 
 @dataclass
 class IncludeContext:
     """現在読み込まれているヘッダファイルの情報を管理するクラス"""
     lib_paths: list[Path]
-    included_local: set[str] = field(default_factory=set)
-    included_system: set[str] = field(default_factory=set)
-    defined_args: set[str] = field(default_factory=set)
+    included_local: set[RawFileName] = field(default_factory=set)
+    included_system: set[RawFileName] = field(default_factory=set)
+    defined_args: set[DefinedParam] = field(default_factory=set)
+
 
 logger: Logger = getLogger(__name__)
 
@@ -30,9 +38,6 @@ INCLUDE_GUARD_RE = re.compile(r'#ifndef\s+([A-Z0-9_]+_HPP)')
 DEFINE_PARAM_RE = re.compile(r'#define\s+([A-Z0-9_]+_HPP)')
 END_IF_RE = re.compile(r'#endif\s*//*\s*([A-Z0-9_]+_HPP)*')
 SINGLE_END_IF_RE = re.compile(r'#endif\s*')
-
-defined: set[str] = set()
-included_headers: set[str] = set()
 
 
 def prepare_args():
@@ -50,7 +55,7 @@ def prepare_args():
     return parser
 
 
-def parse_args(parser: argparse.ArgumentParser) -> tuple[str, bool, list[Path], str]:
+def parse_args(parser: argparse.ArgumentParser) -> tuple[RawFileName, bool, RawFileNames, RawFileName]:
     """引数解釈を行う
     Returns:
         tuple: (source_file, is_output_to_console, lib_paths, output_file)
@@ -58,29 +63,29 @@ def parse_args(parser: argparse.ArgumentParser) -> tuple[str, bool, list[Path], 
     args = parser.parse_args()
 
     # source ファイルの処理
-    source: str = args.source
+    source: RawFileName = args.source
     # console 出力を行うかの処理
     console: bool = False
     if args.console:
         console = True
     # lib パスの処理
-    lib: list[Path] = []
+    lib: RawFileNames = []
     if args.lib:
         lib = args.lib
     elif 'CPLUS_INCLUDE_PATH' in environ:
         lib = environ['CPLUS_INCLUDE_PATH'].split(':')
     # 現在のディレクトリの位置も追加する
-        lib.append(str(Path.cwd()))
+        lib.append(RawFileName(Path.cwd()))
         print(lib)
     # output ファイルの処理
     if args.output:
-        output: str = args.output
+        output: RawFileName = args.output
     else:
         output = 'combined.cpp'
     return source, console, lib, output
 
 
-def build_contest(libs: list[Path]) -> IncludeContext:
+def build_contest(libs: RawFileNames) -> IncludeContext:
     """IncludeContext を構築する
 
     Args:
@@ -92,40 +97,40 @@ def build_contest(libs: list[Path]) -> IncludeContext:
     return IncludeContext(lib_paths=list(map(Path, libs)))
 
 
-def find_file(source: str, lib_paths: list[Path]) -> str:
+def find_file(source: RawFileName, lib_paths: list[Path]) -> Path:
     """ライブラリパスからファイルを探す
 
     Args:
-        source (str): 探すファイル名
+        source (RawFileName): 探すファイル名
         lib_paths (list[Path]): ライブラリパスのリスト
 
     Raises:
         FileNotFoundError: ファイルが見つからなかった場合に発生
 
     Returns:
-        str: 見つかったファイルのパス
+        RawFileName: 見つかったファイルのパス
     """
     for lib_path in lib_paths:
         file_candidate = lib_path / source
         if file_candidate.is_file():
-            return str(file_candidate)
+            return Path(file_candidate)
     raise FileNotFoundError(f"{source} not Found")
 
 
 def expand_file(
-    source: str,
+    source: RawFileName,
     ctx: IncludeContext
-) -> list[str]:
+) -> SourceLines:
     """ファイルを展開する
 
     Args:
-        source (str): 展開対象のファイル名
+        source (RawFileName): 展開対象のファイル名
         ctx (IncludeContext): IncludeContext オブジェクト
 
     Returns:
-        list[str]: 展開結果の行リスト
+        SourceLines: 展開結果の行リスト
     """
-    result: list[str] = []
+    result: SourceLines = []
 
     # これから読むファイルは初めてかを確認する
     if source in ctx.included_local:
@@ -145,17 +150,17 @@ def expand_file(
     return result
 
 
-def process_line(line: str, ctx: IncludeContext) -> list[str]:
+def process_line(line: SourceLine, ctx: IncludeContext) -> SourceLines:
     """1行を処理する
 
     Args:
-        line (str): 処理対象の行
+        line (SourceLine): 処理対象の行
         ctx (IncludeContext): IncludeContext オブジェクト
 
     Returns:
-        list[str]: 処理結果の行リスト
+        SourceLines: 処理結果の行リスト
     """
-    result: list[str] = []
+    result: SourceLines = []
     # 正規表現にマッチするかを確認する
     local_include = LOCAL_INCLUDE_RE.match(line)
     system_include = SYSTEM_INCLUDE_RE.match(line)
@@ -198,13 +203,13 @@ def process_line(line: str, ctx: IncludeContext) -> list[str]:
     return result
 
 
-def write_output(output_line: list[str], is_output_to_console: bool, output_file: str) -> None:
+def write_output(output_line: SourceLines, is_output_to_console: bool, output_file: RawFileName) -> None:
     """出力をファイルまたはコンソールに書き込む
 
     Args:
-        output_line (list[str]): 出力内容の行リスト
+        output_line (SourceLines): 出力内容の行リスト
         is_output_to_console (bool): コンソールに出力するかどうか
-        output_file (str): 出力ファイルパス
+        output_file (RawFileName): 出力ファイルパス
     """
     output = '\n'.join(output_line) + '\n'
     if is_output_to_console:
