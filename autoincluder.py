@@ -1,44 +1,50 @@
 #!/usr/bin/env python3
 # verification-helper: IGNORE 1
 import re
-import sys
 import argparse
 from logging import Logger, basicConfig, getLogger
-from os import getenv, environ
+from os import getenv, environ, path
 from pathlib import Path
 from typing import List
 
 
-logger = getLogger(__name__)  # type: Logger
+logger: Logger = getLogger(__name__)
 
-atcoder_include = re.compile('#include "([a-zA-Z_0-9/]*(|.hpp|))"\s*')
+
+library_include = re.compile('#include "([a-zA-Z_0-9/]*(|.hpp|))"\\s*')
 
 include_guard = re.compile('#.*([A-Z_0-9]_HPP)')
-all_include = re.compile('#include <([+a-zA-Z_0-9/]*(|.hpp|.h))>\s*')
+all_include = re.compile('#include <([+a-zA-Z_0-9/]*(|.hpp|.h))>\\s*')
 
-lib_path = Path.cwd()
+lib_paths = List[Path]
 
-defined = set()
-seted = set()
+defined: set[str] = set()
+included_headers: set[str] = set()
 
 
 def dfs(f: str) -> List[str]:
     global defined
+    global lib_paths
     if f in defined:
         logger.info('already included {}, skip'.format(f))
         return []
     defined.add(f)
 
     logger.info('include {}'.format(f))
-
-    with open(file=str(lib_path / f), mode="r", encoding='UTF-8') as f:
-        s = f.read()
+    s = ''
+    for lib_path in lib_paths:
+        if path.isfile(lib_path/f):
+            with open(file=str(lib_path / f), mode="r", encoding='UTF-8') as file:
+                s = file.read()
+            continue
+    if not s:
+        raise FileNotFoundError(f"{f} not Found")
     result = []
     for line in s.splitlines():
         if include_guard.match(line):
             continue
 
-        m = atcoder_include.match(line)
+        m = library_include.match(line)
         m2 = all_include.match(line)
         if m:
             result.extend(dfs(m.group(1)))
@@ -46,37 +52,45 @@ def dfs(f: str) -> List[str]:
         elif m2:
             target_header = m2.group(1)
 
-            if target_header in seted:
-                logger.info('alreay {} , skiped'.format(target_header))
+            if target_header in included_headers:
+                logger.info('already {} , skipped'.format(target_header))
                 continue
             logger.info('has {}'.format(target_header))
-            seted.add(target_header)
+            included_headers.add(target_header)
         result.append(line)
     return result
 
 
 if __name__ == "__main__":
+    # logger の設定
     basicConfig(
         format="%(asctime)s [%(levelname)s] %(message)s",
         datefmt="%H:%M:%S",
         level=getenv('LOG_LEVEL', 'INFO'),
     )
+    # 引数の設定
     parser = argparse.ArgumentParser(description='Expander')
     parser.add_argument('source', help='Source File')
     parser.add_argument('-c', '--console',
                         action='store_true', help='Print to Console')
-    parser.add_argument('--lib', help='Path to This library Path')
+    parser.add_argument(
+        '-o', '--output', help='path to output', default='combined.cpp')
+    parser.add_argument('--lib', help='Path to This library Path', nargs="*")
     opts = parser.parse_args()
 
+    # ライブラリファイルを取得する
     if opts.lib:
-        lib_path = Path(opts.lib)
+        lib_paths = list(map(Path, opts.lib))
     elif 'CPLUS_INCLUDE_PATH' in environ:
-        lib_path = Path(environ['CPLUS_INCLUDE_PATH'])
+        print(f"{environ['CPLUS_INCLUDE_PATH'].split(":")}")
+        lib_paths = list(map(Path, environ['CPLUS_INCLUDE_PATH'].split(':')))
+
+    # 対象ファイルの読み込み
     s = open(opts.source).read()
 
     result = []
     for line in s.splitlines():
-        m = atcoder_include.match(line)
+        m = library_include.match(line)
         m2 = all_include.match(line)
         if m:
             result.extend(dfs(m.group(1)))
@@ -84,11 +98,11 @@ if __name__ == "__main__":
         elif m2:
             target_header = m2.group(1)
 
-            if target_header in seted:
-                logger.info('alreay {} , skiped'.format(target_header))
+            if target_header in included_headers:
+                logger.info('already {} , skipped'.format(target_header))
                 continue
             logger.info('has {}'.format(target_header))
-            seted.add(target_header)
+            included_headers.add(target_header)
         result.append(line)
 
     output = '\n'.join(result) + '\n'
@@ -96,6 +110,7 @@ if __name__ == "__main__":
     if opts.console:
         print(output)
     else:
-        with open(file='combined.cpp', mode='w', encoding='UTF-8') as f:
+        output_file = opts.output
+        with open(file=output_file, mode='w', encoding='UTF-8') as f:
             f.write(output)
-        print("out : combined.cpp")
+        logger.info('out : {}'.format(output_file))
