@@ -1,101 +1,238 @@
 #!/usr/bin/env python3
 # verification-helper: IGNORE 1
 import re
-import sys
 import argparse
 from logging import Logger, basicConfig, getLogger
 from os import getenv, environ
 from pathlib import Path
-from typing import List
+from dataclasses import dataclass, field
+
+RawFileName = str
+RawFileNames = list[RawFileName]
+SourceLine = str
+SourceLines = list[SourceLine]
+DefinedParam = str
 
 
-logger = getLogger(__name__)  # type: Logger
 
-atcoder_include = re.compile('#include "([a-zA-Z_0-9/]*(|.hpp|))"\s*')
+@dataclass
+class IncludeContext:
+    """現在読み込まれているヘッダファイルの情報を管理するクラス"""
+    lib_paths: list[Path]
+    included_local: set[RawFileName] = field(default_factory=set)
+    included_system: set[RawFileName] = field(default_factory=set)
+    defined_args: set[DefinedParam] = field(default_factory=set)
+
+
+logger: Logger = getLogger(__name__)
+
+
+library_include = re.compile('#include "([a-zA-Z_0-9/]*(|.hpp|))"\\s*')
 
 include_guard = re.compile('#.*([A-Z_0-9]_HPP)')
-all_include = re.compile('#include <([+a-zA-Z_0-9/]*(|.hpp|.h))>\s*')
+all_include = re.compile('#include <([+a-zA-Z_0-9/]*(|.hpp|.h))>\\s*')
 
-lib_path = Path.cwd()
+LOCAL_INCLUDE_RE = re.compile(r'#include\s+"([^"]+)"')
+SYSTEM_INCLUDE_RE = re.compile(r'#include\s+<([^>]+)>')
+INCLUDE_GUARD_RE = re.compile(r'#ifndef\s+([A-Z0-9_]+_HPP)')
+DEFINE_PARAM_RE = re.compile(r'#define\s+([A-Z0-9_]+_HPP)')
+END_IF_RE = re.compile(r'#endif\s*//*\s*([A-Z0-9_]+_HPP)*')
+SINGLE_END_IF_RE = re.compile(r'#endif\s*')
 
-defined = set()
-seted = set()
+
+def prepare_args():
+    """引数解釈の準備を行う
+     Returns:
+        argparse.ArgumentParser: 引数解釈器
+    """
+    parser = argparse.ArgumentParser(description='Expander')
+    parser.add_argument('source', help='Source File')
+    parser.add_argument('-c', '--console',
+                        action='store_true', help='Print to Console')
+    parser.add_argument(
+        '-o', '--output', help='path to output', default='combined.cpp')
+    parser.add_argument('--lib', help='Path to This library Path', nargs="*")
+    return parser
 
 
-def dfs(f: str) -> List[str]:
-    global defined
-    if f in defined:
-        logger.info('already included {}, skip'.format(f))
-        return []
-    defined.add(f)
+def parse_args(parser: argparse.ArgumentParser) -> tuple[RawFileName, bool, RawFileNames, RawFileName]:
+    """引数解釈を行う
+    Returns:
+        tuple: (source_file, is_output_to_console, lib_paths, output_file)
+    """
+    args = parser.parse_args()
 
-    logger.info('include {}'.format(f))
+    # source ファイルの処理
+    source: RawFileName = args.source
+    # console 出力を行うかの処理
+    console: bool = False
+    if args.console:
+        console = True
+    # lib パスの処理
+    lib: RawFileNames = []
+    if args.lib:
+        lib = args.lib
+    elif 'CPLUS_INCLUDE_PATH' in environ:
+        lib = environ['CPLUS_INCLUDE_PATH'].split(':')
+    # 現在のディレクトリの位置も追加する
+        lib.append(RawFileName(Path.cwd()))
+        logger.debug("Resolved library include paths: %s", lib)
+    # output ファイルの処理
+    if args.output:
+        output: RawFileName = args.output
+    else:
+        output = 'combined.cpp'
+    return source, console, lib, output
 
-    with open(file=str(lib_path / f), mode="r", encoding='UTF-8') as f:
-        s = f.read()
-    result = []
+
+def build_contest(libs: RawFileNames) -> IncludeContext:
+    """IncludeContext を構築する
+
+    Args:
+        libs (RawFileNames): ライブラリパスのリスト
+
+    Returns:
+        IncludeContext: IncludeContext オブジェクト
+    """
+    return IncludeContext(lib_paths=list(map(Path, libs)))
+
+
+def find_file(source: RawFileName, lib_paths: list[Path]) -> Path:
+    """ライブラリパスからファイルを探す
+
+    Args:
+        source (RawFileName): 探すファイル名
+        lib_paths (list[Path]): ライブラリパスのリスト
+
+    Raises:
+        FileNotFoundError: ファイルが見つからなかった場合に発生
+
+    Returns:
+        RawFileName: 見つかったファイルのパス
+    """
+    for lib_path in lib_paths:
+        file_candidate = lib_path / source
+        if file_candidate.is_file():
+            return Path(file_candidate)
+    raise FileNotFoundError(f"{source} not Found")
+
+
+def expand_file(
+    source: RawFileName,
+    ctx: IncludeContext
+) -> SourceLines:
+    """ファイルを展開する
+
+    Args:
+        source (RawFileName): 展開対象のファイル名
+        ctx (IncludeContext): IncludeContext オブジェクト
+
+    Returns:
+        SourceLines: 展開結果の行リスト
+    """
+    result: SourceLines = []
+
+    # これから読むファイルは初めてかを確認する
+    if source in ctx.included_local:
+        logger.info('already included {}, skip'.format(source))
+        return result
+    ctx.included_local.add(source)
+    logger.info('include {}'.format(source))
+
+    # 読み込むファイルのディレクトリを確認する
+    s = ''
+    lib_file = find_file(source, ctx.lib_paths)
+    with open(file=lib_file, mode="r", encoding='UTF-8') as file:
+        s = file.read()
     for line in s.splitlines():
-        if include_guard.match(line):
-            continue
+        processed_lines = process_line(line, ctx)
+        result.extend(processed_lines)
+    return result
 
-        m = atcoder_include.match(line)
-        m2 = all_include.match(line)
-        if m:
-            result.extend(dfs(m.group(1)))
-            continue
-        elif m2:
-            target_header = m2.group(1)
 
-            if target_header in seted:
-                logger.info('alreay {} , skiped'.format(target_header))
-                continue
+def process_line(line: SourceLine, ctx: IncludeContext) -> SourceLines:
+    """1行を処理する
+
+    Args:
+        line (SourceLine): 処理対象の行
+        ctx (IncludeContext): IncludeContext オブジェクト
+
+    Returns:
+        SourceLines: 処理結果の行リスト
+    """
+    result: SourceLines = []
+    # 正規表現にマッチするかを確認する
+    local_include = LOCAL_INCLUDE_RE.match(line)
+    system_include = SYSTEM_INCLUDE_RE.match(line)
+    include_guard_start = INCLUDE_GUARD_RE.match(line)
+    define_param = DEFINE_PARAM_RE.match(line)
+    end_if = END_IF_RE.match(line)
+    single_end_if = SINGLE_END_IF_RE.match(line)
+
+    if local_include:
+        target_header = local_include.group(1)
+        logger.info('local include found: {}'.format(target_header))
+        result.extend(expand_file(target_header, ctx))
+    elif system_include:
+        target_header = system_include.group(1)
+        if target_header in ctx.included_system:
+            logger.info('already {} , skipped'.format(target_header))
+        else:
             logger.info('has {}'.format(target_header))
-            seted.add(target_header)
+            ctx.included_system.add(target_header)
+            result.append(line)
+    elif include_guard_start:
+        guard_name = include_guard_start.group(1)
+        logger.info('include guard start found ({})'.format(guard_name))
+        result.append(line)
+
+    elif define_param:
+        param_name = define_param.group(1)
+        logger.info('define param found ({})'.format(param_name))
+        result.append(line)
+
+    elif end_if:
+        guard_name = end_if.group(1)
+        logger.info('end if found ({})'.format(guard_name))
+        result.append(line)
+    elif single_end_if:
+        logger.warning('single end if found!')
+        result.append(line)
+    else:
         result.append(line)
     return result
 
 
+def write_output(output_line: SourceLines, is_output_to_console: bool, output_file: RawFileName) -> None:
+    """出力をファイルまたはコンソールに書き込む
+
+    Args:
+        output_line (SourceLines): 出力内容の行リスト
+        is_output_to_console (bool): コンソールに出力するかどうか
+        output_file (RawFileName): 出力ファイルパス
+    """
+    output = '\n'.join(output_line) + '\n'
+    if is_output_to_console:
+        print(output)
+    else:
+        with open(file=output_file, mode='w', encoding='UTF-8') as f:
+            f.write(output)
+        logger.info('out : {}'.format(output_file))
+
+
 if __name__ == "__main__":
+
+    # logger の設定
     basicConfig(
         format="%(asctime)s [%(levelname)s] %(message)s",
         datefmt="%H:%M:%S",
         level=getenv('LOG_LEVEL', 'INFO'),
     )
-    parser = argparse.ArgumentParser(description='Expander')
-    parser.add_argument('source', help='Source File')
-    parser.add_argument('-c', '--console',
-                        action='store_true', help='Print to Console')
-    parser.add_argument('--lib', help='Path to Atcoder Library')
-    opts = parser.parse_args()
+    # 引数の設定
+    arg_parser = prepare_args()
 
-    if opts.lib:
-        lib_path = Path(opts.lib)
-    elif 'CPLUS_INCLUDE_PATH' in environ:
-        lib_path = Path(environ['CPLUS_INCLUDE_PATH'])
-    s = open(opts.source).read()
-
-    result = []
-    for line in s.splitlines():
-        m = atcoder_include.match(line)
-        m2 = all_include.match(line)
-        if m:
-            result.extend(dfs(m.group(1)))
-            continue
-        elif m2:
-            target_header = m2.group(1)
-
-            if target_header in seted:
-                logger.info('alreay {} , skiped'.format(target_header))
-                continue
-            logger.info('has {}'.format(target_header))
-            seted.add(target_header)
-        result.append(line)
-
-    output = '\n'.join(result) + '\n'
-
-    if opts.console:
-        print(output)
-    else:
-        with open(file='combined.cpp', mode='w', encoding='UTF-8') as f:
-            f.write(output)
-        print("out : combined.cpp")
+    source_file, is_output_to_console, lib_paths, output_file = parse_args(
+        arg_parser)
+    include_context = build_contest(libs=lib_paths)
+    expand_result = expand_file(source_file, include_context)
+    write_output(expand_result, is_output_to_console, output_file)
