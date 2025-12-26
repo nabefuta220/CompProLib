@@ -89,7 +89,7 @@ def build_contest(libs: RawFileNames) -> IncludeContext:
     """IncludeContext を構築する
 
     Args:
-        opts (argparse.Namespace): 引数解釈結果
+        libs (RawFileNames): ライブラリパスのリスト
 
     Returns:
         IncludeContext: IncludeContext オブジェクト
