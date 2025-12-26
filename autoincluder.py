@@ -76,7 +76,7 @@ def parse_args(parser: argparse.ArgumentParser) -> tuple[RawFileName, bool, RawF
         lib = environ['CPLUS_INCLUDE_PATH'].split(':')
     # 現在のディレクトリの位置も追加する
         lib.append(RawFileName(Path.cwd()))
-        print(lib)
+        logger.debug("Resolved library include paths: %s", lib)
     # output ファイルの処理
     if args.output:
         output: RawFileName = args.output
