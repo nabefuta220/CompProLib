@@ -183,7 +183,7 @@ def process_line(source_info: SourceFileInfo, ctx: IncludeContext) -> SourceLine
 
     if local_include:
         target_header = local_include.group(1)
-        logger.info('local include found: {}'.format(target_header))
+        logger.info('{} local include found: {}'.format(source_info, target_header))
         result.extend(expand_file(target_header, ctx))
     elif system_include:
         target_header = system_include.group(1)
@@ -195,19 +195,19 @@ def process_line(source_info: SourceFileInfo, ctx: IncludeContext) -> SourceLine
             result.append(source_info.line_contents)
     elif include_guard_start:
         guard_name = include_guard_start.group(1)
-        logger.info('include guard start found ({})'.format(guard_name))
+        logger.info('{} include guard start found ({})'.format(source_info, guard_name))
         result.append(source_info.line_contents)
     elif define_param:
         param_name = define_param.group(1)
-        logger.info('define param found ({})'.format(param_name))
+        logger.info('{} define param found ({})'.format(source_info, param_name))
         result.append(source_info.line_contents)
 
     elif end_if:
         guard_name = end_if.group(1)
-        logger.info('end if found ({})'.format(guard_name))
+        logger.info('{} end if found ({})'.format(source_info, guard_name))
         result.append(source_info.line_contents)
     elif single_end_if:
-        logger.warning('single end if found!')
+        logger.warning('{} single end if found!'.format(source_info))
         result.append(source_info.line_contents)
     else:
         result.append(source_info.line_contents)
