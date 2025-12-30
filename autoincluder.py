@@ -23,6 +23,15 @@ class IncludeContext:
     included_system: set[RawFileName] = field(default_factory=set)
     defined_args: set[DefinedParam] = field(default_factory=set)
 
+@dataclass
+class SourceFileInfo:
+    """現在読んでいるファイルの場所とその内容を取得するクラス"""
+    file_path : RawFileName
+    line_contents : SourceLine
+    line_no: int
+    char_no: int = 0
+    def __str__(self) -> str:
+        return f"{self.file_path}:{self.line_no}:{self.char_no}:"
 
 logger: Logger = getLogger(__name__)
 
@@ -144,17 +153,20 @@ def expand_file(
     lib_file = find_file(source, ctx.lib_paths)
     with open(file=lib_file, mode="r", encoding='UTF-8') as file:
         s = file.read()
-    for line in s.splitlines():
-        processed_lines = process_line(line, ctx)
+    read_info = SourceFileInfo(file_path=source, line_contents=s, line_no=0)
+    for line_no,line in enumerate(s.splitlines()):
+        read_info.line_no = line_no + 1
+        read_info.line_contents = line
+        processed_lines = process_line(read_info, ctx)
         result.extend(processed_lines)
     return result
 
 
-def process_line(line: SourceLine, ctx: IncludeContext) -> SourceLines:
+def process_line(source_info: SourceFileInfo, ctx: IncludeContext) -> SourceLines:
     """1行を処理する
 
     Args:
-        line (SourceLine): 処理対象の行
+        line (SourceFileInfo): 処理対象の行
         ctx (IncludeContext): IncludeContext オブジェクト
 
     Returns:
@@ -162,12 +174,12 @@ def process_line(line: SourceLine, ctx: IncludeContext) -> SourceLines:
     """
     result: SourceLines = []
     # 正規表現にマッチするかを確認する
-    local_include = LOCAL_INCLUDE_RE.match(line)
-    system_include = SYSTEM_INCLUDE_RE.match(line)
-    include_guard_start = INCLUDE_GUARD_RE.match(line)
-    define_param = DEFINE_PARAM_RE.match(line)
-    end_if = END_IF_RE.match(line)
-    single_end_if = SINGLE_END_IF_RE.match(line)
+    local_include = LOCAL_INCLUDE_RE.match(source_info.line_contents)
+    system_include = SYSTEM_INCLUDE_RE.match(source_info.line_contents)
+    include_guard_start = INCLUDE_GUARD_RE.match(source_info.line_contents)
+    define_param = DEFINE_PARAM_RE.match(source_info.line_contents)
+    end_if = END_IF_RE.match(source_info.line_contents)
+    single_end_if = SINGLE_END_IF_RE.match(source_info.line_contents)
 
     if local_include:
         target_header = local_include.group(1)
@@ -180,26 +192,25 @@ def process_line(line: SourceLine, ctx: IncludeContext) -> SourceLines:
         else:
             logger.info('has {}'.format(target_header))
             ctx.included_system.add(target_header)
-            result.append(line)
+            result.append(source_info.line_contents)
     elif include_guard_start:
         guard_name = include_guard_start.group(1)
         logger.info('include guard start found ({})'.format(guard_name))
-        result.append(line)
-
+        result.append(source_info.line_contents)
     elif define_param:
         param_name = define_param.group(1)
         logger.info('define param found ({})'.format(param_name))
-        result.append(line)
+        result.append(source_info.line_contents)
 
     elif end_if:
         guard_name = end_if.group(1)
         logger.info('end if found ({})'.format(guard_name))
-        result.append(line)
+        result.append(source_info.line_contents)
     elif single_end_if:
         logger.warning('single end if found!')
-        result.append(line)
+        result.append(source_info.line_contents)
     else:
-        result.append(line)
+        result.append(source_info.line_contents)
     return result
 
 
